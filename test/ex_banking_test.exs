@@ -22,7 +22,41 @@ defmodule ExBankingTest do
   end
 
   describe "deposit/3" do
+    setup do
+      user = "deposito"
+      ExBanking.create_user(user)
 
+      {:ok, user: user}
+    end
+
+    test "returns ok, when valid data and request can be accept", %{user: user} do
+      amount = 10.00
+
+      assert ExBanking.deposit(user, amount, "BRL") == {:ok, %{brl: 10.00}}
+      assert ExBanking.deposit(user, 15.10, "BRL") == {:ok, %{brl: 25.10}}
+      assert ExBanking.deposit(user, 5, "BRL") == {:ok, %{brl: 30.10}}
+
+      assert ExBanking.deposit(user, amount, "USD") == {:ok, %{usd: 10.00}}
+    end
+
+    test "returns error, when wrong args", %{user: user} do
+      assert ExBanking.deposit(123, "32", "BRL") == {:error, :wrong_arguments}
+      assert ExBanking.deposit(user, "32", "BRL") == {:error, :wrong_arguments}
+      assert ExBanking.deposit(user, 10.00, :usd) == {:error, :wrong_arguments}
+    end
+
+    test "returns error, when invalid user" do
+      user = "non"
+      assert ExBanking.deposit(user, 10.00, "BRL") == {:error, :user_does_not_exist}
+    end
+
+    test "returns error, when too many request", %{user: user} do
+      queue_factory(user, [1,2,3,4,5,6,7,8,9,10])
+
+      assert ExBanking.deposit(user, 100, "err") == {:error, :too_many_requests_to_user}
+
+      queue_factory(user, [])
+    end
   end
 
   describe "withdraw/3" do
@@ -31,5 +65,13 @@ defmodule ExBankingTest do
 
   describe "get_balance/2" do
 
+  end
+
+  defp queue_factory(user, value) do
+    Agent.get_and_update(Account.whereis(user), fn state ->
+      state = Map.merge(state, %{queue: value})
+
+      {state, state}
+    end)
   end
 end
