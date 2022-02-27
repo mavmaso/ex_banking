@@ -20,16 +20,17 @@ defmodule ExBanking do
   def deposit(user, amount, currency) do
     with :ok <- check_args(user, amount, currency),
       {:ok, user} <- check_user(user) do
-      case Account.request(:deposit, %{user: user, amount: amount, currency: currency}) do
-        {:ok, balance} -> {:ok, balance}
-        {:error, reason} -> {:error, reason}
-      end
+      Account.request(:deposit, %{user: user, amount: amount, currency: currency})
     end
   end
 
-  # @spec withdraw(user :: String.t, amount :: number, currency :: String.t) :: {:ok, new_balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :not_enough_money | :too_many_requests_to_user}
-  # Decreases user's balance in given currency by amount value
-  # Returns new_balance of the user in given format
+  @spec withdraw(user :: String.t, amount :: number, currency :: String.t) :: {:ok, new_balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :not_enough_money | :too_many_requests_to_user}
+  def withdraw(user, amount, currency) do
+    with :ok <- check_args(user, amount, currency),
+      {:ok, user} <- check_user(user) do
+        Account.request(:withdraw, %{user: user, amount: amount, currency: currency})
+    end
+  end
 
   # @spec get_balance(user :: String.t, currency :: String.t) :: {:ok, balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
   # Returns balance of the user in given format

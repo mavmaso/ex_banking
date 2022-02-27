@@ -61,10 +61,11 @@ defmodule ExBanking.Account do
     state = Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
 
       old_amount = if balance[currency], do: balance[currency], else: 0
+      final = args.amount + old_amount
 
       state = Map.merge(
         state,
-        %{balance: Map.merge(balance, %{currency => args.amount + old_amount})}
+        %{balance: Map.merge(balance, %{currency => final})}
         )
 
       {state, state}
@@ -73,7 +74,43 @@ defmodule ExBanking.Account do
     {:ok, %{currency => state.balance[currency]}}
   end
 
+  defp execute(user, {_, :withdraw, args} = task) do
+    remove_queue(user, task)
+
+    currency = String.to_atom(args.currency)
+
+    case get_currency(user, currency) do
+      nil ->
+        {:error, :wrong_arguments}
+
+      old_amount ->
+        update_amount(user, currency, old_amount, args.amount)
+    end
+  end
+
+  defp update_amount(user, currency, old_amount, amount) do
+    if (real = old_amount - amount) > 0 do
+      state = Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
+
+        final = Float.ceil(real, 2)
+
+        state = Map.merge(
+          state,
+          %{balance: Map.merge(balance, %{currency => final})}
+          )
+
+        {state, state}
+      end)
+
+      {:ok, %{currency => state.balance[currency]}}
+    else
+      {:error, :not_enough_money}
+    end
+  end
+
   defp get_queue(user), do: Agent.get(global_name(user), & &1)[:queue]
+
+  defp get_currency(user, currency), do: Agent.get(global_name(user), & &1)[:balance][currency]
 
   defp global_name(name), do: {:global, {__MODULE__, name}}
 
