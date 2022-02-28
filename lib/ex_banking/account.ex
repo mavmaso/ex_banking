@@ -26,7 +26,6 @@ defmodule ExBanking.Account do
 
     currency =
       args.currency
-      |> String.downcase()
       |> String.to_atom()
 
     state = Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
@@ -50,21 +49,13 @@ defmodule ExBanking.Account do
 
     currency = String.to_atom(args.currency)
 
-    case get_currency(user, currency) do
-      nil ->
-        {:error, :wrong_arguments}
-
-      old_amount ->
-        update_amount(user, currency, old_amount, args.amount)
-    end
+    get_money(user, currency, args.amount)
   end
 
   defp execute(user, {_, :get, args} = task) do
     remove_queue(user, task)
 
     currency = String.to_atom(args.currency)
-
-    get_currency(user, currency)
 
     case get_currency(user, currency) do
       nil -> {:error, :wrong_arguments}
@@ -73,26 +64,73 @@ defmodule ExBanking.Account do
   end
 
   defp execute(user, {_, :send, args} = task) do
-    remove_queue(user, task)
-
     currency = String.to_atom(args.currency)
-    old_amount = get_currency(user, currency)
 
-    cache_amount =
-      unless is_nil(old_amount) and is_nil(get_currency(args.to_user, currency))  do
-        {:ok, amount} = update_amount(user, currency, old_amount, args.amount)
-        amount
-      else
-        {:error, :wrong_arguments}
-      end
+    user
+    |> remove_queue(task)
+    |> take_money(currency, args.amount)
+    |> put_money(args.amount, args.to_user, args.currency)
+  end
 
-    case request(:deposit, %{user: args.to_user, amount: args.amount, currency: args.currency}) do
+  defp take_money({:error, reason}, _currency, _amount), do: {:error, reason}
+
+  defp take_money(user, currency, amount) do
+    case get_money(user, currency, amount) do
+      {:ok, money} -> money
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp put_money({:error, reason}, _a, _t, _c), do: {:error, reason}
+
+  defp put_money(money, amount, to_user, currency) do
+    case request(:deposit, %{user: to_user, amount: amount, currency: currency}) do
       {:ok, amount} ->
-        {:ok, cache_amount, amount}
+        {:ok, money, amount}
       {:error, reason} ->
         {:error, reason}
     end
   end
+
+  defp get_money(user, currency, amount) do
+    case get_currency(user, currency) do
+      nil ->
+        {:error, :wrong_arguments}
+
+      old_amount ->
+        update_amount(user, currency, old_amount, amount)
+    end
+  end
+
+  defp update_amount(user, currency, old_amount, amount) do
+    if (real = old_amount - amount) >= 0 do
+      state = Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
+        final = Float.ceil(real, 2)
+
+        state = Map.merge(
+          state,
+          %{balance: Map.merge(balance, %{currency => final})}
+          )
+
+        {state, state}
+      end)
+
+      {:ok, state.balance[currency]}
+    else
+      {:error, :not_enough_money}
+    end
+  end
+
+  defp get_currency(user, currency), do: Agent.get(global_name(user), & &1)[:balance][currency]
+
+  defp global_name(name), do: {:global, {__MODULE__, name}}
+
+  defp data, do: %{
+    balance: %{},
+    queue: []
+  }
+
+  defp get_queue(user), do: Agent.get(global_name(user), & &1)[:queue]
 
   defp queue(user, action, args) do
     if get_queue(user) |> length() <= 9 do
@@ -121,35 +159,7 @@ defmodule ExBanking.Account do
 
       {state, state}
     end)
+
+    user
   end
-
-  defp update_amount(user, currency, old_amount, amount) do
-    if (real = old_amount - amount) >= 0 do
-      state = Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
-        final = Float.ceil(real, 2)
-
-        state = Map.merge(
-          state,
-          %{balance: Map.merge(balance, %{currency => final})}
-          )
-
-        {state, state}
-      end)
-
-      {:ok, state.balance[currency]}
-    else
-      {:error, :not_enough_money}
-    end
-  end
-
-  defp get_queue(user), do: Agent.get(global_name(user), & &1)[:queue]
-
-  defp get_currency(user, currency), do: Agent.get(global_name(user), & &1)[:balance][currency]
-
-  defp global_name(name), do: {:global, {__MODULE__, name}}
-
-  defp data, do: %{
-    balance: %{},
-    queue: []
-  }
 end

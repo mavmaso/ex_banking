@@ -115,7 +115,8 @@ defmodule ExBankingTest do
       amount = 10.00
 
       assert ExBanking.deposit(user, amount, "VIE") == {:ok, amount}
-      assert ExBanking.get_balance(user, "vie") == {:ok, amount}
+      assert ExBanking.get_balance(user, "VIE") == {:ok, amount}
+      refute ExBanking.get_balance(user, "vie") == {:ok, amount}
     end
 
     test "returns error when wrong args", %{user: user} do
@@ -152,6 +153,13 @@ defmodule ExBankingTest do
 
       assert ExBanking.deposit(user, amount, "brl") == {:ok, amount}
       assert ExBanking.send(user, to_user, amount, "brl") == {:ok, 0.00, 11.00}
+    end
+
+    test "returns error when sender don't have enough money", %{user: user,  to_user: to_user} do
+      amount = 1.00
+
+      assert ExBanking.deposit(user, amount, "lua") == {:ok, 1.00}
+      assert ExBanking.send(user, to_user, 12.01, "lua") == {:error, :not_enough_money}
     end
   end
 
