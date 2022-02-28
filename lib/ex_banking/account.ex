@@ -42,7 +42,7 @@ defmodule ExBanking.Account do
       {state, state}
     end)
 
-    {:ok, %{currency => state.balance[currency]}}
+    {:ok, state.balance[currency]}
   end
 
   defp execute(user, {_, :withdraw, args} = task) do
@@ -69,6 +69,28 @@ defmodule ExBanking.Account do
     case get_currency(user, currency) do
       nil -> {:error, :wrong_arguments}
       amount -> {:ok, amount}
+    end
+  end
+
+  defp execute(user, {_, :send, args} = task) do
+    remove_queue(user, task)
+
+    currency = String.to_atom(args.currency)
+    old_amount = get_currency(user, currency)
+
+    cache_amount =
+      unless is_nil(old_amount) and is_nil(get_currency(args.to_user, currency))  do
+        {:ok, amount} = update_amount(user, currency, old_amount, args.amount)
+        amount
+      else
+        {:error, :wrong_arguments}
+      end
+
+    case request(:deposit, %{user: args.to_user, amount: args.amount, currency: args.currency}) do
+      {:ok, amount} ->
+        {:ok, cache_amount, amount}
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -102,9 +124,8 @@ defmodule ExBanking.Account do
   end
 
   defp update_amount(user, currency, old_amount, amount) do
-    if (real = old_amount - amount) > 0 do
+    if (real = old_amount - amount) >= 0 do
       state = Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
-
         final = Float.ceil(real, 2)
 
         state = Map.merge(
@@ -115,7 +136,7 @@ defmodule ExBanking.Account do
         {state, state}
       end)
 
-      {:ok, %{currency => state.balance[currency]}}
+      {:ok, state.balance[currency]}
     else
       {:error, :not_enough_money}
     end

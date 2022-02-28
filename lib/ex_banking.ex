@@ -41,7 +41,19 @@ defmodule ExBanking do
 
   def get_balance(_user, _currency), do: {:error, :wrong_arguments}
 
-  # @spec send(from_user :: String.t, to_user :: String.t, amount :: number, currency :: String.t) :: {:ok, from_user_balance :: number, to_user_balance :: number} \| {:error, :wrong_arguments \| :not_enough_money \| :sender_does_not_exist \| :receiver_does_not_exist \| :too_many_requests_to_sender \| :too_many_requests_to_receiver}
+  @spec send(from_user :: String.t, to_user :: String.t, amount :: number, currency :: String.t) :: {:ok, from_user_balance :: number, to_user_balance :: number} | {:error, :wrong_arguments | :not_enough_money | :sender_does_not_exist | :receiver_does_not_exist | :too_many_requests_to_sender | :too_many_requests_to_receiver}
+  def send(from_user, to_user, amount, currency) do
+    with :ok <- check_args(to_user, from_user, amount, currency),
+      {:ok, _user} <- check_user(from_user),
+      {:ok, _user} <- check_user(to_user) do
+      Account.request(:send, %{
+        user: from_user,
+        to_user: to_user,
+        amount: amount,
+        currency: currency
+      })
+    end
+  end
 
   defp check_user(user) do
     case Account.whereis(user) do
@@ -52,6 +64,14 @@ defmodule ExBanking do
 
   defp check_args(user, amount, currency) do
     if is_bitstring(user) and is_number(amount) and is_bitstring(currency) do
+      :ok
+    else
+      {:error, :wrong_arguments}
+    end
+  end
+
+  defp check_args(user, to_user, amount, currency) do
+    if is_bitstring(user) and is_bitstring(to_user) and is_number(amount) and is_bitstring(currency) do
       :ok
     else
       {:error, :wrong_arguments}

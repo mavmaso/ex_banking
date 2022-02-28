@@ -4,16 +4,16 @@ defmodule ExBankingTest do
   alias ExBanking.Account
 
   describe "create_user/1" do
-    test "returns ok, when create a new user" do
+    test "returns ok when create a new user" do
       user = "user"
       assert ExBanking.create_user(user) == :ok
     end
 
-    test "returns error, when wrong args" do
+    test "returns error when wrong args" do
       assert ExBanking.create_user(:user) == {:error, :wrong_arguments}
     end
 
-    test "returns error, when user already exists" do
+    test "returns error when user already exists" do
       user = "novo"
 
       assert ExBanking.create_user(user) == :ok
@@ -29,28 +29,28 @@ defmodule ExBankingTest do
       {:ok, user: user}
     end
 
-    test "returns ok, when valid data and request can be accept", %{user: user} do
+    test "returns ok when valid data and request can be accept", %{user: user} do
       amount = 10.00
 
-      assert ExBanking.deposit(user, amount, "BRL") == {:ok, %{brl: 10.00}}
-      assert ExBanking.deposit(user, 15.10, "BRL") == {:ok, %{brl: 25.10}}
-      assert ExBanking.deposit(user, 5, "BRL") == {:ok, %{brl: 30.10}}
+      assert ExBanking.deposit(user, amount, "BRL") == {:ok, 10.00}
+      assert ExBanking.deposit(user, 15.10, "BRL") == {:ok, 25.10}
+      assert ExBanking.deposit(user, 5, "BRL") == {:ok, 30.10}
 
-      assert ExBanking.deposit(user, amount, "USD") == {:ok, %{usd: 10.00}}
+      assert ExBanking.deposit(user, amount, "USD") == {:ok, 10.00}
     end
 
-    test "returns error, when wrong args", %{user: user} do
+    test "returns error when wrong args", %{user: user} do
       assert ExBanking.deposit(123, "32", "BRL") == {:error, :wrong_arguments}
       assert ExBanking.deposit(user, "32", "BRL") == {:error, :wrong_arguments}
       assert ExBanking.deposit(user, 10.00, :usd) == {:error, :wrong_arguments}
     end
 
-    test "returns error, when invalid user" do
+    test "returns error when invalid user" do
       user = "non"
       assert ExBanking.deposit(user, 10.00, "BRL") == {:error, :user_does_not_exist}
     end
 
-    test "returns error, when too many request", %{user: user} do
+    test "returns error when too many request", %{user: user} do
       queue_factory(user, [1,2,3,4,5,6,7,8,9,10])
 
       assert ExBanking.deposit(user, 100, "err") == {:error, :too_many_requests_to_user}
@@ -67,21 +67,21 @@ defmodule ExBankingTest do
       {:ok, user: user}
     end
 
-    test "returns ok, when valid data and request can be accept", %{user: user} do
+    test "returns ok when valid data and request can be accept", %{user: user} do
       amount = 10.00
 
-      assert ExBanking.deposit(user, amount, "sol") == {:ok, %{sol: 10.00}}
-      assert ExBanking.withdraw(user, 9.99, "sol") == {:ok, %{sol: 0.01}}
+      assert ExBanking.deposit(user, amount, "sol") == {:ok, 10.00}
+      assert ExBanking.withdraw(user, 9.99, "sol") == {:ok, 0.01}
     end
 
-    test "returns error, when don't have enough money", %{user: user} do
+    test "returns error when don't have enough money", %{user: user} do
       amount = 10.00
 
-      assert ExBanking.deposit(user, amount, "lua") == {:ok, %{lua: 10.00}}
+      assert ExBanking.deposit(user, amount, "lua") == {:ok, 10.00}
       assert ExBanking.withdraw(user, 10.01, "lua") == {:error, :not_enough_money}
     end
 
-    test "returns error, when wrong args", %{user: user} do
+    test "returns error when wrong args", %{user: user} do
       amount = 10.00
 
       assert ExBanking.withdraw(:user, amount, "sol") == {:error, :wrong_arguments}
@@ -89,12 +89,12 @@ defmodule ExBankingTest do
       assert ExBanking.withdraw(user, amount, 123) == {:error, :wrong_arguments}
     end
 
-    test "returns error, when invalid user" do
+    test "returns error when invalid user" do
       user = "non"
       assert ExBanking.withdraw(user, 21, "sol") == {:error, :user_does_not_exist}
     end
 
-    test "returns error, when too many request", %{user: user} do
+    test "returns error when too many request", %{user: user} do
       queue_factory(user, [1,2,3,4,5,6,7,8,9,10])
 
       assert ExBanking.withdraw(user, 21, "sol")  == {:error, :too_many_requests_to_user}
@@ -111,29 +111,47 @@ defmodule ExBankingTest do
       {:ok, user: user}
     end
 
-    test "returns ok, when valid data and request can be accept", %{user: user} do
+    test "returns ok when valid data and request can be accept", %{user: user} do
       amount = 10.00
 
-      assert ExBanking.deposit(user, amount, "VIE") == {:ok, %{vie: amount}}
+      assert ExBanking.deposit(user, amount, "VIE") == {:ok, amount}
       assert ExBanking.get_balance(user, "vie") == {:ok, amount}
     end
 
-    test "returns error, when wrong args", %{user: user} do
+    test "returns error when wrong args", %{user: user} do
       assert ExBanking.get_balance(:user, "vie") == {:error, :wrong_arguments}
       assert ExBanking.get_balance(user,  123) == {:error, :wrong_arguments}
     end
 
-    test "returns error, when invalid user" do
+    test "returns error when invalid user" do
       user = "non"
       assert ExBanking.get_balance(user, "VIE") == {:error, :user_does_not_exist}
     end
 
-    test "returns error, when too many request", %{user: user} do
+    test "returns error when too many request", %{user: user} do
       queue_factory(user, [1,2,3,4,5,6,7,8,9,10])
 
       assert ExBanking.get_balance(user, "vie")  == {:error, :too_many_requests_to_user}
 
       queue_factory(user, [])
+    end
+  end
+
+  describe "send/4" do
+    setup do
+      user = "envio"
+      to_user = "recebe"
+      ExBanking.create_user(user)
+      ExBanking.create_user(to_user)
+
+      {:ok, user: user, to_user: to_user}
+    end
+
+    test "returns ok when valid data and request can be accept", %{user: user, to_user: to_user} do
+      amount = 11.00
+
+      assert ExBanking.deposit(user, amount, "brl") == {:ok, amount}
+      assert ExBanking.send(user, to_user, amount, "brl") == {:ok, 0.00, 11.00}
     end
   end
 
