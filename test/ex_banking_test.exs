@@ -104,7 +104,37 @@ defmodule ExBankingTest do
   end
 
   describe "get_balance/2" do
+    setup do
+      user = "saldo"
+      ExBanking.create_user(user)
 
+      {:ok, user: user}
+    end
+
+    test "returns ok, when valid data and request can be accept", %{user: user} do
+      amount = 10.00
+
+      assert ExBanking.deposit(user, amount, "VIE") == {:ok, %{vie: amount}}
+      assert ExBanking.get_balance(user, "vie") == {:ok, amount}
+    end
+
+    test "returns error, when wrong args", %{user: user} do
+      assert ExBanking.get_balance(:user, "vie") == {:error, :wrong_arguments}
+      assert ExBanking.get_balance(user,  123) == {:error, :wrong_arguments}
+    end
+
+    test "returns error, when invalid user" do
+      user = "non"
+      assert ExBanking.get_balance(user, "VIE") == {:error, :user_does_not_exist}
+    end
+
+    test "returns error, when too many request", %{user: user} do
+      queue_factory(user, [1,2,3,4,5,6,7,8,9,10])
+
+      assert ExBanking.get_balance(user, "vie")  == {:error, :too_many_requests_to_user}
+
+      queue_factory(user, [])
+    end
   end
 
   defp queue_factory(user, value) do

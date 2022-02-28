@@ -32,8 +32,16 @@ defmodule ExBanking do
     end
   end
 
-  # @spec get_balance(user :: String.t, currency :: String.t) :: {:ok, balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
-  # Returns balance of the user in given format
+  @spec get_balance(user :: String.t, currency :: String.t) :: {:ok, balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
+  def get_balance(user, currency) when is_bitstring(user) and is_bitstring(currency) do
+    with {:ok, user} <- check_user(user) do
+      Account.request(:get, %{user: user, currency: currency})
+    end
+  end
+
+  def get_balance(_user, _currency), do: {:error, :wrong_arguments}
+
+  # @spec send(from_user :: String.t, to_user :: String.t, amount :: number, currency :: String.t) :: {:ok, from_user_balance :: number, to_user_balance :: number} \| {:error, :wrong_arguments \| :not_enough_money \| :sender_does_not_exist \| :receiver_does_not_exist \| :too_many_requests_to_sender \| :too_many_requests_to_receiver}
 
   defp check_user(user) do
     case Account.whereis(user) do

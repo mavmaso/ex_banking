@@ -21,35 +21,6 @@ defmodule ExBanking.Account do
     end
   end
 
-  defp queue(user, action, args) do
-    if get_queue(user) |> length() <= 9 do
-      add_queue(user, action, args)
-    else
-      {:error, :too_many_requests_to_user}
-    end
-  end
-
-  defp add_queue(user, action, args) do
-    id = System.unique_integer([:positive])
-
-    Agent.get_and_update(global_name(user), fn %{queue: queue} = state ->
-      state = Map.merge(state, %{queue: queue ++ [{id, action, args}]})
-
-      {state, state}
-    end)
-
-    {:ok, {id, action, args}}
-  end
-
-  defp remove_queue(user, task) do
-    Agent.get_and_update(global_name(user), fn %{queue: queue} = state ->
-
-      state = Map.merge(state, %{queue: queue -- [task]})
-
-      {state, state}
-    end)
-  end
-
   defp execute(user, {_, :deposit, args} = task) do
     remove_queue(user, task)
 
@@ -86,6 +57,48 @@ defmodule ExBanking.Account do
       old_amount ->
         update_amount(user, currency, old_amount, args.amount)
     end
+  end
+
+  defp execute(user, {_, :get, args} = task) do
+    remove_queue(user, task)
+
+    currency = String.to_atom(args.currency)
+
+    get_currency(user, currency)
+
+    case get_currency(user, currency) do
+      nil -> {:error, :wrong_arguments}
+      amount -> {:ok, amount}
+    end
+  end
+
+  defp queue(user, action, args) do
+    if get_queue(user) |> length() <= 9 do
+      add_queue(user, action, args)
+    else
+      {:error, :too_many_requests_to_user}
+    end
+  end
+
+  defp add_queue(user, action, args) do
+    id = System.unique_integer([:positive])
+
+    Agent.get_and_update(global_name(user), fn %{queue: queue} = state ->
+      state = Map.merge(state, %{queue: queue ++ [{id, action, args}]})
+
+      {state, state}
+    end)
+
+    {:ok, {id, action, args}}
+  end
+
+  defp remove_queue(user, task) do
+    Agent.get_and_update(global_name(user), fn %{queue: queue} = state ->
+
+      state = Map.merge(state, %{queue: queue -- [task]})
+
+      {state, state}
+    end)
   end
 
   defp update_amount(user, currency, old_amount, amount) do
