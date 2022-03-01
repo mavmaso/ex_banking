@@ -44,8 +44,7 @@ defmodule ExBanking do
   @spec send(from_user :: String.t, to_user :: String.t, amount :: number, currency :: String.t) :: {:ok, from_user_balance :: number, to_user_balance :: number} | {:error, :wrong_arguments | :not_enough_money | :sender_does_not_exist | :receiver_does_not_exist | :too_many_requests_to_sender | :too_many_requests_to_receiver}
   def send(from_user, to_user, amount, currency) do
     with :ok <- check_args(to_user, from_user, amount, currency),
-      {:ok, _user} <- check_user(from_user),
-      {:ok, _user} <- check_user(to_user) do
+      :ok <- check_user(from_user, to_user) do
       Account.request(:send, %{
         user: from_user,
         to_user: to_user,
@@ -59,6 +58,14 @@ defmodule ExBanking do
     case Account.whereis(user) do
       nil -> {:error, :user_does_not_exist}
       _pid -> {:ok, user}
+    end
+  end
+
+  defp check_user(sender, receiver) do
+    cond do
+      check_user(sender) == {:error, :user_does_not_exist} -> {:error, :sender_does_not_exist}
+      check_user(receiver) == {:error, :user_does_not_exist}  -> {:error, :receiver_does_not_exist}
+      true -> :ok
     end
   end
 

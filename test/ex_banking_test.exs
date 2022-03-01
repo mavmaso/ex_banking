@@ -161,6 +161,16 @@ defmodule ExBankingTest do
       assert ExBanking.deposit(user, amount, "lua") == {:ok, 1.00}
       assert ExBanking.send(user, to_user, 12.01, "lua") == {:error, :not_enough_money}
     end
+
+    test "returns error when invalid sender" do
+      user = "non"
+      assert ExBanking.send(user, "to_user", 12.01, "lua")  == {:error, :sender_does_not_exist}
+    end
+
+    test "returns error when invalid receiver", %{user: user} do
+      receiver = "non"
+      assert ExBanking.send(user, receiver, 12.01, "lua")  == {:error, :receiver_does_not_exist}
+    end
   end
 
   defp queue_factory(user, value) do
