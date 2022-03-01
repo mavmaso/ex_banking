@@ -10,7 +10,7 @@ defmodule ExBanking.AccountSupervisor do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
-  @spec open(user :: String.t) :: {:ok, pid()} | {:error, {:already_started, pid()}}
+  @spec open(user :: String.t()) :: {:ok, pid()} | {:error, {:already_started, pid()}}
   def open(name) do
     DynamicSupervisor.start_child(__MODULE__, {ExBanking.Account, name})
   end

@@ -51,7 +51,7 @@ defmodule ExBankingTest do
     end
 
     test "returns error when too many request", %{user: user} do
-      queue_factory(user, [1,2,3,4,5,6,7,8,9,10])
+      queue_factory(user, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
       assert ExBanking.deposit(user, 100, "err") == {:error, :too_many_requests_to_user}
 
@@ -95,9 +95,9 @@ defmodule ExBankingTest do
     end
 
     test "returns error when too many request", %{user: user} do
-      queue_factory(user, [1,2,3,4,5,6,7,8,9,10])
+      queue_factory(user, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
-      assert ExBanking.withdraw(user, 21, "sol")  == {:error, :too_many_requests_to_user}
+      assert ExBanking.withdraw(user, 21, "sol") == {:error, :too_many_requests_to_user}
 
       queue_factory(user, [])
     end
@@ -121,7 +121,7 @@ defmodule ExBankingTest do
 
     test "returns error when wrong args", %{user: user} do
       assert ExBanking.get_balance(:user, "vie") == {:error, :wrong_arguments}
-      assert ExBanking.get_balance(user,  123) == {:error, :wrong_arguments}
+      assert ExBanking.get_balance(user, 123) == {:error, :wrong_arguments}
     end
 
     test "returns error when invalid user" do
@@ -130,9 +130,9 @@ defmodule ExBankingTest do
     end
 
     test "returns error when too many request", %{user: user} do
-      queue_factory(user, [1,2,3,4,5,6,7,8,9,10])
+      queue_factory(user, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
 
-      assert ExBanking.get_balance(user, "vie")  == {:error, :too_many_requests_to_user}
+      assert ExBanking.get_balance(user, "vie") == {:error, :too_many_requests_to_user}
 
       queue_factory(user, [])
     end
@@ -155,7 +155,7 @@ defmodule ExBankingTest do
       assert ExBanking.send(user, to_user, amount, "brl") == {:ok, 0.00, 11.00}
     end
 
-    test "returns error when sender don't have enough money", %{user: user,  to_user: to_user} do
+    test "returns error when sender don't have enough money", %{user: user, to_user: to_user} do
       amount = 1.00
 
       assert ExBanking.deposit(user, amount, "lua") == {:ok, 1.00}
@@ -164,12 +164,12 @@ defmodule ExBankingTest do
 
     test "returns error when invalid sender" do
       user = "non"
-      assert ExBanking.send(user, "to_user", 12.01, "lua")  == {:error, :sender_does_not_exist}
+      assert ExBanking.send(user, "to_user", 12.01, "lua") == {:error, :sender_does_not_exist}
     end
 
     test "returns error when invalid receiver", %{user: user} do
       receiver = "non"
-      assert ExBanking.send(user, receiver, 12.01, "lua")  == {:error, :receiver_does_not_exist}
+      assert ExBanking.send(user, receiver, 12.01, "lua") == {:error, :receiver_does_not_exist}
     end
   end
 

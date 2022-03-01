@@ -1,7 +1,8 @@
 defmodule ExBanking.Account do
   use Agent
 
-  @spec start_link(name :: atom() | String.t()) :: {:ok, pid()} | {:error, {:already_started, pid}} | {:error, any()}
+  @spec start_link(name :: atom() | String.t()) ::
+          {:ok, pid()} | {:error, {:already_started, pid}} | {:error, any()}
   def start_link(name) do
     Agent.start_link(fn -> data() end, name: global_name(name))
   end
@@ -16,7 +17,7 @@ defmodule ExBanking.Account do
 
   def request(action, %{user: user} = args) do
     with {:ok, task} <- queue(user, action, args),
-      {:ok, info} <- execute(user, task) do
+         {:ok, info} <- execute(user, task) do
       {:ok, info}
     end
   end
@@ -28,18 +29,19 @@ defmodule ExBanking.Account do
       args.currency
       |> String.to_atom()
 
-    state = Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
+    state =
+      Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
+        old_amount = if balance[currency], do: balance[currency], else: 0
+        final = args.amount + old_amount
 
-      old_amount = if balance[currency], do: balance[currency], else: 0
-      final = args.amount + old_amount
+        state =
+          Map.merge(
+            state,
+            %{balance: Map.merge(balance, %{currency => final})}
+          )
 
-      state = Map.merge(
-        state,
-        %{balance: Map.merge(balance, %{currency => final})}
-        )
-
-      {state, state}
-    end)
+        {state, state}
+      end)
 
     {:ok, state.balance[currency]}
   end
@@ -87,6 +89,7 @@ defmodule ExBanking.Account do
     case request(:deposit, %{user: to_user, amount: amount, currency: currency}) do
       {:ok, amount} ->
         {:ok, money, amount}
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -104,16 +107,18 @@ defmodule ExBanking.Account do
 
   defp update_amount(user, currency, old_amount, amount) do
     if (real = old_amount - amount) >= 0 do
-      state = Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
-        final = Float.ceil(real, 2)
+      state =
+        Agent.get_and_update(global_name(user), fn %{balance: balance} = state ->
+          final = Float.ceil(real, 2)
 
-        state = Map.merge(
-          state,
-          %{balance: Map.merge(balance, %{currency => final})}
-          )
+          state =
+            Map.merge(
+              state,
+              %{balance: Map.merge(balance, %{currency => final})}
+            )
 
-        {state, state}
-      end)
+          {state, state}
+        end)
 
       {:ok, state.balance[currency]}
     else
@@ -125,10 +130,11 @@ defmodule ExBanking.Account do
 
   defp global_name(name), do: {:global, {__MODULE__, name}}
 
-  defp data, do: %{
-    balance: %{},
-    queue: []
-  }
+  defp data,
+    do: %{
+      balance: %{},
+      queue: []
+    }
 
   defp get_queue(user), do: Agent.get(global_name(user), & &1)[:queue]
 
@@ -154,7 +160,6 @@ defmodule ExBanking.Account do
 
   defp remove_queue(user, task) do
     Agent.get_and_update(global_name(user), fn %{queue: queue} = state ->
-
       state = Map.merge(state, %{queue: queue -- [task]})
 
       {state, state}

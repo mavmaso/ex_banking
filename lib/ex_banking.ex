@@ -6,7 +6,7 @@ defmodule ExBanking do
   alias ExBanking.AccountSupervisor
   alias ExBanking.Account
 
-  @spec create_user(user :: String.t) :: :ok | {:error, :wrong_arguments | :user_already_exists}
+  @spec create_user(user :: String.t()) :: :ok | {:error, :wrong_arguments | :user_already_exists}
   def create_user(user) when is_bitstring(user) do
     case AccountSupervisor.open(user) do
       {:ok, _pid} -> :ok
@@ -16,23 +16,33 @@ defmodule ExBanking do
 
   def create_user(_user), do: {:error, :wrong_arguments}
 
-  @spec deposit(user :: String.t, amount :: number, currency :: String.t) :: {:ok, new_balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
+  @spec deposit(user :: String.t(), amount :: number, currency :: String.t()) ::
+          {:ok, new_balance :: number}
+          | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
   def deposit(user, amount, currency) do
     with :ok <- check_args(user, amount, currency),
-      {:ok, user} <- check_user(user) do
+         {:ok, user} <- check_user(user) do
       Account.request(:deposit, %{user: user, amount: amount, currency: currency})
     end
   end
 
-  @spec withdraw(user :: String.t, amount :: number, currency :: String.t) :: {:ok, new_balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :not_enough_money | :too_many_requests_to_user}
+  @spec withdraw(user :: String.t(), amount :: number, currency :: String.t()) ::
+          {:ok, new_balance :: number}
+          | {:error,
+             :wrong_arguments
+             | :user_does_not_exist
+             | :not_enough_money
+             | :too_many_requests_to_user}
   def withdraw(user, amount, currency) do
     with :ok <- check_args(user, amount, currency),
-      {:ok, user} <- check_user(user) do
-        Account.request(:withdraw, %{user: user, amount: amount, currency: currency})
+         {:ok, user} <- check_user(user) do
+      Account.request(:withdraw, %{user: user, amount: amount, currency: currency})
     end
   end
 
-  @spec get_balance(user :: String.t, currency :: String.t) :: {:ok, balance :: number} | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
+  @spec get_balance(user :: String.t(), currency :: String.t()) ::
+          {:ok, balance :: number}
+          | {:error, :wrong_arguments | :user_does_not_exist | :too_many_requests_to_user}
   def get_balance(user, currency) when is_bitstring(user) and is_bitstring(currency) do
     with {:ok, user} <- check_user(user) do
       Account.request(:get, %{user: user, currency: currency})
@@ -41,10 +51,23 @@ defmodule ExBanking do
 
   def get_balance(_user, _currency), do: {:error, :wrong_arguments}
 
-  @spec send(from_user :: String.t, to_user :: String.t, amount :: number, currency :: String.t) :: {:ok, from_user_balance :: number, to_user_balance :: number} | {:error, :wrong_arguments | :not_enough_money | :sender_does_not_exist | :receiver_does_not_exist | :too_many_requests_to_sender | :too_many_requests_to_receiver}
+  @spec send(
+          from_user :: String.t(),
+          to_user :: String.t(),
+          amount :: number,
+          currency :: String.t()
+        ) ::
+          {:ok, from_user_balance :: number, to_user_balance :: number}
+          | {:error,
+             :wrong_arguments
+             | :not_enough_money
+             | :sender_does_not_exist
+             | :receiver_does_not_exist
+             | :too_many_requests_to_sender
+             | :too_many_requests_to_receiver}
   def send(from_user, to_user, amount, currency) do
     with :ok <- check_args(to_user, from_user, amount, currency),
-      :ok <- check_user(from_user, to_user) do
+         :ok <- check_user(from_user, to_user) do
       Account.request(:send, %{
         user: from_user,
         to_user: to_user,
@@ -64,7 +87,7 @@ defmodule ExBanking do
   defp check_user(sender, receiver) do
     cond do
       check_user(sender) == {:error, :user_does_not_exist} -> {:error, :sender_does_not_exist}
-      check_user(receiver) == {:error, :user_does_not_exist}  -> {:error, :receiver_does_not_exist}
+      check_user(receiver) == {:error, :user_does_not_exist} -> {:error, :receiver_does_not_exist}
       true -> :ok
     end
   end
@@ -78,7 +101,8 @@ defmodule ExBanking do
   end
 
   defp check_args(user, to_user, amount, currency) do
-    if is_bitstring(user) and is_bitstring(to_user) and is_number(amount) and is_bitstring(currency) do
+    if is_bitstring(user) and is_bitstring(to_user) and is_number(amount) and
+         is_bitstring(currency) do
       :ok
     else
       {:error, :wrong_arguments}
